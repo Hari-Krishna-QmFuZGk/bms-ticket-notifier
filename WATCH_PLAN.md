@@ -1,6 +1,6 @@
 # Pending Hyderabad Ramayana watch
 
-The user requested **Telugu**, at any of these Hyderabad cinemas:
+The user explicitly reconfirmed **Telugu only** after sharing a Hindi reference link. Target any of these Hyderabad cinemas:
 
 - Allu Cinemas, Kokapet ([cinema website](https://allucinemas.com/)).
 - AMB Cinemas, Sarath City Capital Mall, Kondapur ([cinema website](https://www.ambcinemas.in/)).
@@ -19,7 +19,7 @@ The dates correspond to the upcoming weekend as of the conversation on 3 Novembe
 
 The user supplied this reference: [Ramayana — Hindi, ET00451914](https://in.bookmyshow.com/movies/hyderabad/ramayana-hindi/ET00451914).
 
-Both the forwarded title and URL label it **Hindi**, conflicting with the earlier Telugu preference. A direct read of that exact URL returned **HTTP 403** from this environment. Its language selector and any Telugu event identifier could not be inspected. Do not guess a Telugu identifier by editing the slug, and do not configure this Hindi URL as if it were Telugu. A confirmed Telugu BookMyShow URL is needed, or the user must explicitly choose Hindi instead.
+Both the forwarded title and URL label it **Hindi**. The user explicitly chose to keep Telugu, so this Hindi listing is not the selected target. A direct read of that exact URL returned **HTTP 403** from this environment. Its language selector and any Telugu event identifier could not be inspected. Do not guess a Telugu identifier by editing the slug, and do not configure this Hindi URL as if it were Telugu. A confirmed Telugu BookMyShow URL is still needed. Indexed searches did not establish a Telugu identifier; no identifier was guessed.
 
 ## Proposed configuration after language verification
 

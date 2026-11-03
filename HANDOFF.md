@@ -38,8 +38,8 @@ Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `
 - A live **dry run** using the upstream example movie and Hyderabad returned **HTTP 403 / unable to determine**, exit status 1, with no email or state writes. User-specific movie/theatre/dates were not provided. **Live BookMyShow compatibility is not established.**
 - Inspected checkout v6's authentication implementation: it supports Git worktree credentials, as used by this state mechanism. GitHub Actions execution itself has not yet been run or verified.
 - No live Resend test: credentials were not supplied. Mocked provider acceptance/failure tests passed; inbox delivery remains to be tested.
-- Follow-up preferences: Thursday/Friday 5–6 November from 16:00 IST; Saturday/Sunday 7–8 November anytime. New tests cover the 15:59/16:00 boundary, weekend early shows, invalid/missing/duplicate date rules, and stable watch IDs when JSON is reformatted. The user-supplied ET00451914 URL explicitly says Hindi and returned HTTP 403; Telugu preference remains unresolved. See WATCH_PLAN.md.
-- Draft PR #1 is published at https://github.com/Hari-Krishna-QmFuZGk/bms-ticket-notifier/pull/1. The original 35-test push and PR CI runs passed; follow-up CI status is available on the PR.
+- Follow-up preferences: Thursday/Friday 5–6 November from 16:00 IST; Saturday/Sunday 7–8 November anytime. New tests cover the 15:59/16:00 boundary, weekend early shows, invalid/missing/duplicate date rules, and stable watch IDs when JSON is reformatted. The user-supplied ET00451914 URL explicitly says Hindi and returned HTTP 403; The user reconfirmed Telugu only; the correct Telugu target URL remains unresolved. See WATCH_PLAN.md.
+- Draft PR #1 is published at https://github.com/Hari-Krishna-QmFuZGk/bms-ticket-notifier/pull/1. The original 35-test push and PR CI runs passed. Both push and PR runs for the 38-test per-date-filter update (`e18c8b1`) also passed on GitHub.
 
 ## Exact configuration
 
@@ -73,7 +73,7 @@ Merging, pushing to `main`, changing credentials/configuration, and activating m
 
 After review/merge (a separate user-controlled step):
 
-1. Confirm Telugu versus Hindi and supply a verified URL for the chosen version. The supplied Hindi reference and confirmed theatre/date/time preferences are recorded in WATCH_PLAN.md.
+1. Supply a verified Telugu URL; the user explicitly reconfirmed Telugu rather than Hindi. The supplied Hindi reference and confirmed theatre/date/time preferences are recorded in WATCH_PLAN.md.
 2. Enable Actions in the fork if needed. Configure the Variables above with `MONITOR_ENABLED=false` and the three Secrets; follow README's interactive `gh secret set` commands so keys stay out of chat/history.
 3. Verify Resend sender/recipient restrictions. For personal free testing use `onboarding@resend.dev` and the account owner's email; other recipients require a verified domain.
 4. Run workflow mode `dry-run`. If GitHub's runner also receives a block/schema error, pause and investigate permitted access before relying on the monitor.
