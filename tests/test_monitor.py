@@ -44,6 +44,25 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(c.dates, ('20261120', '20261121'))
         self.assertEqual(c.times, 'evening,19:30')
 
+    def test_per_date_time_rules(self):
+        dates = '20261105,20261106,20261107,20261108'
+        rules = {'20261105': 'Evening, Night', '20261106': 'evening,night',
+                 '20261107': '', '20261108': ''}
+        c = Config.from_env(dict(ENV, BMS_DATES=dates, BMS_TIME=json.dumps(rules)))
+        self.assertEqual(c.time_filter_for('20261105'), 'evening,night')
+        self.assertEqual(c.time_filter_for('20261108'), '')
+        # Reformatting the same JSON must not create a new watch / duplicate alert.
+        reordered = dict(reversed(list(rules.items())))
+        other = Config.from_env(dict(ENV, BMS_DATES=dates, BMS_TIME=json.dumps(reordered, indent=2)))
+        self.assertEqual(watch_id(c), watch_id(other))
+
+    def test_invalid_per_date_time_rules(self):
+        for rules in ('{', '{}', '{"20261120":null}', '{"20261120":"25:00"}',
+                      '{"20261121":"evening"}',
+                      '{"20261120":"evening","20261120":"night"}'):
+            with self.subTest(rules=rules), self.assertRaises(ValueError):
+                Config.from_env(dict(ENV, BMS_TIME=rules))
+
     def test_invalid_config(self):
         for k, v in [('BMS_URL', ''), ('BMS_URL', 'https://evil.example/movies/x/ET00123456'),
                      ('BMS_URL', ENV['BMS_URL'] + '?token=private'),
@@ -79,6 +98,20 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(main.filter_shows(shows, '', '', '20261121'), [])
         shows[0].date_code = ''
         self.assertEqual(main.filter_shows(shows, '', '', '20261120'), [])
+
+    def test_thursday_friday_from_four_and_weekends_anytime(self):
+        rules = {'20261105': 'evening,night', '20261106': 'evening,night',
+                 '20261107': '', '20261108': ''}
+        c = Config.from_env(dict(ENV, BMS_DATES=','.join(rules), BMS_TIME=json.dumps(rules)))
+        for date in rules:
+            for time in ('0030', '0900', '1559', '1600', '2359'):
+                data = response(date=date)
+                show = data['data']['showtimeWidgets'][0]['data'][0]['data'][0]['showtimes'][0]
+                show['additionalData']['showTimeCode'] = time
+                _, shows, _ = decode_snapshot(data, c, date)
+                expected = date in ('20261107', '20261108') or int(time) >= 1600
+                with self.subTest(date=date, time=time):
+                    self.assertEqual(bool(shows), expected)
 
     def test_unknown_responses(self):
         for data in ({}, {'data': {}}, response(status='9'), response(date='20261121'),

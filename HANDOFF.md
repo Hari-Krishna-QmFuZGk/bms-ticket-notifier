@@ -7,7 +7,7 @@ Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `
 | Files | Purpose |
 | --- | --- |
 | `main.py` | Reused upstream API endpoint, region map, data classes, parsers, filters and email template; added bounded errors/retries, correct date filtering, provider acceptance checks and idempotency header |
-| `config.py` | Validated URL, movie identifier, Hyderabad/city, cinema, dates, times and notification policies; generated booking link respecting explicit date |
+| `config.py` | Validated URL, movie identifier, Hyderabad/city, cinema, dates, times and notification policies; generated booking link respecting explicit date; added per-date time rules through the existing BMS_TIME Variable |
 | `monitor.py` | One-shot orchestration; available/unavailable/unknown results; per-date observations; first-run alerts; pending/accepted notification separation; dry-run, test and stop modes |
 | `state.py` | Atomic validated JSON, backup recovery, dedicated Git worktree/branch persistence, durable checkpoints before and after email, fast-forward-only pushes |
 | `bms_state.json` | Empty version-2 local template; removed unrelated historical upstream observations |
@@ -16,7 +16,7 @@ Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `
 | `tests/__init__.py`, `tests/test_monitor.py`, `tests/test_git_state.py` | Deterministic mocked API/email tests and local Git persistence/race tests |
 | `.env.example`, `.gitignore` | Local configuration template and exclusion of credentials/runtime files |
 | `pyproject.toml` | Meaningful package description; existing runtime dependencies/Python constraint retained; lockfile unchanged |
-| `README.md`, `AUDIT.md`, `HANDOFF.md` | Setup, initial audit, current limits, validation and rollout instructions |
+| `README.md`, `AUDIT.md`, `HANDOFF.md`, `WATCH_PLAN.md` | Setup, initial audit, current limits, validation and rollout instructions; pending user-specific dates/theatres and unresolved Hindi/Telugu link |
 
 ## Decisions
 
@@ -30,7 +30,7 @@ Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `
 ## Validation performed
 
 - Baseline: unittest discovery ran **0 tests**; upstream had no tests.
-- Final: `.venv/bin/python -m unittest discover -v` ran **35 tests, all passed**, using Python **3.14.8**.
+- Final: `.venv/bin/python -m unittest discover -v` ran **38 tests, all passed**, using Python **3.14.8**.
 - Coverage includes configuration/movie request/city/date/theatre/time filters, known availability, disabled date, missing identity/changed schema, first run, unchanged sessions, new sessions, notify-once, retry/failure/crash recovery, expired pending alert, dry-run immutability, stop-after-acceptance, corruption recovery, local locking, durable pre-send failure, local bare-Git remote restoration, no-op commits, read-only branch behavior, and rejection of stale concurrent pushes.
 - `actionlint` **v1.7.12** validated both workflows with no findings. Its release archive checksum was checked against published release checksums.
 - `uv lock --check --offline` succeeded; existing dependency lock remains valid.
@@ -38,6 +38,8 @@ Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `
 - A live **dry run** using the upstream example movie and Hyderabad returned **HTTP 403 / unable to determine**, exit status 1, with no email or state writes. User-specific movie/theatre/dates were not provided. **Live BookMyShow compatibility is not established.**
 - Inspected checkout v6's authentication implementation: it supports Git worktree credentials, as used by this state mechanism. GitHub Actions execution itself has not yet been run or verified.
 - No live Resend test: credentials were not supplied. Mocked provider acceptance/failure tests passed; inbox delivery remains to be tested.
+- Follow-up preferences: Thursday/Friday 5–6 November from 16:00 IST; Saturday/Sunday 7–8 November anytime. New tests cover the 15:59/16:00 boundary, weekend early shows, invalid/missing/duplicate date rules, and stable watch IDs when JSON is reformatted. The user-supplied ET00451914 URL explicitly says Hindi and returned HTTP 403; Telugu preference remains unresolved. See WATCH_PLAN.md.
+- Draft PR #1 is published at https://github.com/Hari-Krishna-QmFuZGk/bms-ticket-notifier/pull/1. The original 35-test push and PR CI runs passed; follow-up CI status is available on the PR.
 
 ## Exact configuration
 
@@ -71,7 +73,7 @@ Merging, pushing to `main`, changing credentials/configuration, and activating m
 
 After review/merge (a separate user-controlled step):
 
-1. Provide the actual movie URL, theatre, dates and optional time preferences.
+1. Confirm Telugu versus Hindi and supply a verified URL for the chosen version. The supplied Hindi reference and confirmed theatre/date/time preferences are recorded in WATCH_PLAN.md.
 2. Enable Actions in the fork if needed. Configure the Variables above with `MONITOR_ENABLED=false` and the three Secrets; follow README's interactive `gh secret set` commands so keys stay out of chat/history.
 3. Verify Resend sender/recipient restrictions. For personal free testing use `onboarding@resend.dev` and the account owner's email; other recipients require a verified domain.
 4. Run workflow mode `dry-run`. If GitHub's runner also receives a block/schema error, pause and investigate permitted access before relying on the monitor.

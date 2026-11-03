@@ -52,7 +52,7 @@ def decode_snapshot(data, config, date):
                 raise ValueError('Invalid show time')
         if not any(s.date_code == date for s in matching):
             raise ValueError('Requested date not returned; availability unknown')
-        filtered = filter_shows(matching, config.theatre, config.times, date)
+        filtered = filter_shows(matching, config.theatre, config.time_filter_for(date), date)
         return movie, filtered, 'matching_shows' if filtered else 'no_preferred_showtimes'
     except (KeyError, TypeError, AttributeError, ValueError, IndexError) as exc:
         # Do not log raw response values; messages below contain only our diagnostics.

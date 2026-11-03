@@ -1,6 +1,7 @@
 """Validated configuration; no credentials or network side effects at import time."""
 import os
 import re
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlparse
@@ -17,6 +18,37 @@ def boolean(env, name, default):
     return value in ('true', '1')
 
 
+def time_preferences(raw, dates):
+    """Keep the original comma list, or require an explicit rule for every date."""
+    def normalize(value):
+        if not isinstance(value, str):
+            raise ValueError('Each BMS_TIME rule must be a string; use empty string for anytime')
+        result = ','.join(p.strip().lower() for p in value.split(',') if p.strip())
+        for period in result.split(',') if result else []:
+            if period not in TIME_PERIODS and not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', period):
+                raise ValueError('BMS_TIME requires morning,afternoon,evening,night or HH:MM')
+        return result
+
+    if not raw.strip().startswith('{'):
+        return normalize(raw)
+
+    def unique_rules(pairs):
+        rules = {}
+        for date, value in pairs:
+            if date in rules:
+                raise ValueError('BMS_TIME contains a duplicate date rule')
+            rules[date] = value
+        return rules
+
+    try:
+        rules = json.loads(raw, object_pairs_hook=unique_rules)
+    except json.JSONDecodeError:
+        raise ValueError('BMS_TIME date rules must be a valid JSON object') from None
+    if set(rules) != set(dates):
+        raise ValueError('BMS_TIME JSON must contain exactly the target dates; use empty strings for anytime')
+    return json.dumps({date: normalize(value) for date, value in rules.items()}, sort_keys=True)
+
+
 @dataclass(frozen=True)
 class Config:
     url: str
@@ -27,6 +59,11 @@ class Config:
     times: str
     notify_once: bool
     stop_after_found: bool
+
+    def time_filter_for(self, date):
+        if self.times.startswith('{'):
+            return json.loads(self.times)[date]
+        return self.times
 
     @classmethod
     def from_env(cls, env=None):
@@ -51,10 +88,7 @@ class Config:
             if not re.fullmatch(r'\d{8}', d):
                 raise ValueError('BMS_DATES must contain YYYYMMDD dates')
             datetime.strptime(d, '%Y%m%d')
-        times = ','.join(p.strip().lower() for p in env.get('BMS_TIME', '').split(',') if p.strip())
-        for p in times.split(',') if times else []:
-            if p not in TIME_PERIODS and not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', p):
-                raise ValueError('BMS_TIME requires morning,afternoon,evening,night or HH:MM')
+        times = time_preferences(env.get('BMS_TIME', ''), dates)
         if env.get('CHECK_INTERVAL', '').strip() not in ('', '5'):
             raise ValueError('CHECK_INTERVAL must be 5; edit workflow cron to change scheduling')
         # Rewrite a city embedded in the supplied URL to match the explicit/default city.

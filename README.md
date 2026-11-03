@@ -30,13 +30,21 @@ Go to **Settings → Secrets and variables → Actions → Variables**. All date
 | `BMS_CITY` | Default `hyderabad`. Explicitly overrides the city in the URL, including the booking link. |
 | `BMS_THEATRE` | **Required.** Case-insensitive name substring; comma-separated substrings are ORed. Use a specific full name to avoid matching other cinemas. |
 | `BMS_DATES` | **Required unless the URL contains a date.** Comma-separated `YYYYMMDD`, e.g. `20261120,20261121`. No implicit today's-date fallback. |
-| `BMS_TIME` | Optional comma-separated periods and/or exact `HH:MM`: `evening,19:30`. Empty means all showtimes. |
+| `BMS_TIME` | Optional comma-separated periods and/or exact `HH:MM`: `evening,19:30`. Empty means all showtimes. For different preferences by date, use the JSON object described below. |
 | `CHECK_INTERVAL` | Optional `5` (minutes). Documents/validates the fixed schedule; changing this variable does **not** rewrite cron. |
 | `NOTIFY_ONCE` | Default `true`: one accepted availability alert for this configuration. `false`: alert for each newly bookable session, once per session. |
 | `STOP_AFTER_FOUND` | Default `false`. `true` persists a stopped flag after the first accepted availability email; subsequent invocations skip BookMyShow requests. |
 | `MONITOR_ENABLED` | Default off. Set exactly `true` to allow scheduled checks. Manual runs work while this is off. |
 
 Periods are morning 06:00–11:59, afternoon 12:00–15:59, evening 16:00–18:59, night 19:00–23:59. Exact times use 24-hour format. Filters are ORed. Supported cities reuse the upstream region map: Hyderabad, Chennai, Mumbai, Delhi/NCR, Bengaluru/Bangalore, Kolkata, Pune, Kochi. Unknown cities are rejected rather than guessed. An absent theatre or date is **unknown**, because absence alone cannot establish sold-out or unopened bookings. An explicitly disabled target date is unavailable.
+
+Different time preferences by date use the existing `BMS_TIME` Variable as a JSON object. It must include **every target date exactly once**; use an empty string for anytime. For example, Thursday/Friday **4 PM onward** and Saturday/Sunday anytime for 5–8 November 2026:
+
+```json
+{"20261105":"evening,night","20261106":"evening,night","20261107":"","20261108":""}
+```
+
+`evening,night` includes starts at 16:00 through 23:59 IST. The JSON object is canonicalized so changing whitespace or key order does not reset duplicate history. Existing plain `BMS_TIME=evening,night` still applies to every date. Do not substitute a Hindi event identifier when monitoring Telugu; verify the actual Telugu movie/booking URL first. See [WATCH_PLAN.md](WATCH_PLAN.md) for this user's pending Hyderabad watch.
 
 Example configuration (replace the movie, cinema, and dates):
 
@@ -183,4 +191,4 @@ See also [GitHub schedule limitations](https://docs.github.com/en/actions/refere
 | Git push/state branch error | Check Actions write permissions, branch rules, network, or another writer. Remote errors do not count as a missing branch. No force pushes are attempted; a failed durable pre-send checkpoint prevents mail. |
 | Schedule never runs | Ensure workflow is on default branch, Actions is enabled, and `MONITOR_ENABLED` is exactly `true`. GitHub may delay/drop scheduled events or disable inactive schedules. |
 
-No real email was sent during development: no Resend credentials or user-specific movie/theatre/dates were provided. See [AUDIT.md](AUDIT.md) for the initial repository findings and [HANDOFF.md](HANDOFF.md) for validation and deployment status.
+No real email was sent during development because Resend credentials were not supplied. User-specific cinema/date/time preferences and the unresolved Hindi/Telugu movie link are recorded in WATCH_PLAN.md. See [AUDIT.md](AUDIT.md) for the initial repository findings and [HANDOFF.md](HANDOFF.md) for validation and deployment status.
