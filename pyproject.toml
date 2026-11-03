@@ -1,7 +1,7 @@
 [project]
 name = "bms-ticket-notifier"
 version = "0.1.0"
-description = "Add your description here"
+description = "Cloud BookMyShow availability checks with durable Resend alerts"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
