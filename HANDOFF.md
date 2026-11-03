@@ -1,6 +1,6 @@
 # Implementation and deployment handoff
 
-Prepared locally on branch **`codex/cloud-monitor`**, based on upstream `5f9782d`. No changes were pushed, no fork or PR was created, no account configuration changed, no real email sent, and no scheduled monitoring activated.
+Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `5f9782d`. The user created the public fork at `Hari-Krishna-QmFuZGk/bms-ticket-notifier`, which was verified as a fork of the original repository with default branch `main`. The user approved pushing this feature branch and opening a draft PR against the fork. No default-branch push, merge, real email, or monitoring activation is included.
 
 ## Files changed
 
@@ -65,9 +65,9 @@ MONITOR_ENABLED=false                  # keep off until explicitly activating
 
 ## Approval and remaining setup
 
-GitHub CLI authentication is available for **`Hari-Krishna-QmFuZGk`**. A read-only lookup did not resolve `Hari-Krishna-QmFuZGk/bms-ticket-notifier`; no writable destination fork was confirmed.
+Verified destination: public fork **`Hari-Krishna-QmFuZGk/bms-ticket-notifier`**, default branch **`main`**, with reported push permission. The user approved publishing only **`codex/cloud-monitor`** and opening a **draft PR against that fork's `main`**. GitHub API fork creation was denied to the integration, so the user created the fork manually.
 
-Proposed account change, requiring user approval: create a **public fork** at `Hari-Krishna-QmFuZGk/bms-ticket-notifier`, push only `codex/cloud-monitor` to that fork, and open a **draft PR against the fork's default branch**. No default-branch push, merge, monitoring activation, or credentials/configuration changes are included in that approval request. Tests may run on the feature-branch push if Actions is enabled; monitoring remains gated off. If another repository is preferred, provide its owner/name.
+Merging, pushing to `main`, changing credentials/configuration, and activating monitoring remain outside this approval. Tests may run on the feature-branch push if Actions is enabled; monitoring remains gated off. See the PR for the current publication and CI status.
 
 After review/merge (a separate user-controlled step):
 
