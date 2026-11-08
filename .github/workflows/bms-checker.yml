@@ -2,7 +2,7 @@ name: BMS Ticket Checker
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -48,6 +48,8 @@ jobs:
           BMS_DATES: ${{ vars.BMS_DATES }}
           BMS_THEATRE: ${{ vars.BMS_THEATRE }}
           BMS_TIME: ${{ vars.BMS_TIME }}
+          BMS_SCREEN: ${{ vars.BMS_SCREEN }}
+          BMS_LANGUAGE: ${{ vars.BMS_LANGUAGE }}
           CHECK_INTERVAL: ${{ vars.CHECK_INTERVAL }}
           NOTIFY_ONCE: ${{ vars.NOTIFY_ONCE }}
           STOP_AFTER_FOUND: ${{ vars.STOP_AFTER_FOUND }}

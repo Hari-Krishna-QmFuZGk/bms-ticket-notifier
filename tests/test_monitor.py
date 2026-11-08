@@ -88,6 +88,36 @@ class ParserTests(unittest.TestCase):
     def setUp(self):
         self.config = Config.from_env(ENV)
 
+    def test_pcx_telugu_time_boundaries(self):
+        config = Config.from_env(dict(ENV, BMS_TIME='13:00-23:00',
+                                     BMS_SCREEN='PCX', BMS_LANGUAGE='Telugu', CHECK_INTERVAL='10'))
+        for time, expected in [('1259', False), ('1300', True), ('1930', True),
+                               ('2300', True), ('2301', False)]:
+            data = response()
+            data['data']['topStickyWidgets'].append({'type': 'horizontal-text-list', 'data': [
+                {'leftText': {'data': [{'components': [{'text': 'Telugu • 2D'}]}]}}]})
+            show = data['data']['showtimeWidgets'][0]['data'][0]['data'][0]['showtimes'][0]
+            show['screenAttr'] = 'PCX Dolby Atmos'
+            show['additionalData']['showTimeCode'] = time
+            with self.subTest(time=time):
+                self.assertEqual(bool(decode_snapshot(data, config, '20261120')[1]), expected)
+        show['additionalData']['showTimeCode'] = '1930'
+        for label in ['2D', 'NonPCX']:
+            show['screenAttr'] = label
+            self.assertEqual(decode_snapshot(data, config, '20261120')[1], [])
+        show['screenAttr'] = ''
+        with self.assertRaisesRegex(RuntimeError, 'Screen metadata missing'):
+            decode_snapshot(data, config, '20261120')
+        show['screenAttr'] = 'PCX'
+        data['data']['topStickyWidgets'].pop()
+        with self.assertRaisesRegex(RuntimeError, 'language not confirmed'):
+            decode_snapshot(data, config, '20261120')
+
+    def test_invalid_time_ranges(self):
+        for value in ['23:00-13:00', '13:00-24:00', '13:60-23:00', '13:00-']:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                Config.from_env(dict(ENV, BMS_TIME=value))
+
     def test_parse_and_filter(self):
         movie, shows, _ = decode_snapshot(response(), self.config, '20261120')
         self.assertEqual(movie['name'], 'Test Movie')

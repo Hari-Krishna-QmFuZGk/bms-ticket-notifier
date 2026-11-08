@@ -4,6 +4,7 @@ import copy
 import fcntl
 import hashlib
 import json
+import re
 import sys
 import uuid
 from dataclasses import asdict
@@ -34,6 +35,8 @@ def decode_snapshot(data, config, date):
         movie = parse_movie_info(data)
         if not isinstance(movie['name'], str) or not movie['name'] or movie['name'] == 'Unknown Movie':
             raise ValueError('Movie not found or movie metadata schema changed')
+        if config.language and not re.search(r'\b' + re.escape(config.language) + r'\b', movie.get('language', ''), re.IGNORECASE):
+            raise ValueError('Requested movie language not confirmed by response metadata')
         shows = parse_shows(data)
         if any(d.date_code == date and d.status == 'NOT_OPEN' for d in dates):
             return movie, [], 'date_not_open'
@@ -53,6 +56,16 @@ def decode_snapshot(data, config, date):
         if not any(s.date_code == date for s in matching):
             raise ValueError('Requested date not returned; availability unknown')
         filtered = filter_shows(matching, config.theatre, config.time_filter_for(date), date)
+        if config.screen:
+            preferred = []
+            for show in filtered:
+                label = show.screen_attr
+                # Never guess PCX from a screen number or the multiplex name.
+                if not isinstance(label, str) or not label.strip():
+                    raise ValueError('Screen metadata missing; requested screen availability unknown')
+                if re.search(r'\b' + re.escape(config.screen) + r'\b', label, re.IGNORECASE):
+                    preferred.append(show)
+            filtered = preferred
         return movie, filtered, 'matching_shows' if filtered else 'no_preferred_showtimes'
     except (KeyError, TypeError, AttributeError, ValueError, IndexError) as exc:
         # Do not log raw response values; messages below contain only our diagnostics.

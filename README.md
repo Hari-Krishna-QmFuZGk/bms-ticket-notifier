@@ -1,6 +1,6 @@
 # BookMyShow Ticket Notifier
 
-A cloud monitor that runs once per GitHub Actions invocation, checks a movie's showtimes at selected cinemas/dates, sends an availability email through Resend, and exits. It never purchases tickets. The cron requests a run every five minutes; GitHub can delay or drop scheduled jobs.
+A cloud monitor that runs once per GitHub Actions invocation, checks a movie's showtimes at selected cinemas/dates, sends an availability email through Resend, and exits. It never purchases tickets. The cron requests a run every ten minutes; GitHub can delay or drop scheduled jobs.
 
 **Live compatibility is unverified.** On 2026-11-03, the repository's existing BookMyShow API endpoint returned HTTP 403 from the development environment, including during a dry run of this checker. Mocked tests verify the implementation, not current BookMyShow access or its undocumented API schema. Run a dry check from your GitHub runner before relying on this monitor. A block is reported as unknown availability, never sold out. There is no CAPTCHA bypass, proxy service, browser automation, or paid infrastructure.
 
@@ -30,8 +30,10 @@ Go to **Settings → Secrets and variables → Actions → Variables**. All date
 | `BMS_CITY` | Default `hyderabad`. Explicitly overrides the city in the URL, including the booking link. |
 | `BMS_THEATRE` | **Required.** Case-insensitive name substring; comma-separated substrings are ORed. Use a specific full name to avoid matching other cinemas. |
 | `BMS_DATES` | **Required unless the URL contains a date.** Comma-separated `YYYYMMDD`, e.g. `20261120,20261121`. No implicit today's-date fallback. |
-| `BMS_TIME` | Optional comma-separated periods and/or exact `HH:MM`: `evening,19:30`. Empty means all showtimes. For different preferences by date, use the JSON object described below. |
-| `CHECK_INTERVAL` | Optional `5` (minutes). Documents/validates the fixed schedule; changing this variable does **not** rewrite cron. |
+| `BMS_SCREEN` | Optional exact label token in show screen metadata, e.g. `PCX`. Missing metadata is unknown, never assumed PCX. |
+| `BMS_LANGUAGE` | Optional required language token in movie metadata, e.g. `telugu`. Missing or mismatched metadata fails closed. |
+| `BMS_TIME` | Optional comma-separated periods and/or exact `HH:MM` or inclusive ranges `HH:MM-HH:MM`: `evening,19:30`. Empty means all showtimes. For different preferences by date, use the JSON object described below. |
+| `CHECK_INTERVAL` | Optional `10` (minutes). Documents/validates the fixed schedule; changing this variable does **not** rewrite cron. |
 | `NOTIFY_ONCE` | Default `true`: one accepted availability alert for this configuration. `false`: alert for each newly bookable session, once per session. |
 | `STOP_AFTER_FOUND` | Default `false`. `true` persists a stopped flag after the first accepted availability email; subsequent invocations skip BookMyShow requests. |
 | `MONITOR_ENABLED` | Default off. Set exactly `true` to allow scheduled checks. Manual runs work while this is off. |
@@ -55,7 +57,7 @@ gh variable set BMS_CITY --repo "$REPO" --body 'hyderabad'
 gh variable set BMS_THEATRE --repo "$REPO" --body 'REPLACE with cinema name'
 gh variable set BMS_DATES --repo "$REPO" --body '20261120,20261121'
 gh variable set BMS_TIME --repo "$REPO" --body 'evening,night'
-gh variable set CHECK_INTERVAL --repo "$REPO" --body '5'
+gh variable set CHECK_INTERVAL --repo "$REPO" --body '10'
 gh variable set NOTIFY_ONCE --repo "$REPO" --body 'true'
 gh variable set STOP_AFTER_FOUND --repo "$REPO" --body 'false'
 gh variable set MONITOR_ENABLED --repo "$REPO" --body 'false'
@@ -99,7 +101,7 @@ gh workflow run bms-checker.yml --repo "$REPO" -f mode=check
 gh variable set MONITOR_ENABLED --repo "$REPO" --body 'true'
 ```
 
-The workflow must exist on the default branch for schedules. It uses `*/5 * * * *`, standard `ubuntu-latest`, a five-minute job timeout, locked dependencies with uv's cache, and no daemon or sleep loop. The runner exits after each check. GitHub concurrency serializes manual/scheduled invocations across refs, with `cancel-in-progress: false`. GitHub can replace older pending runs, delay jobs, or drop runs under load; missed checks are not replayed. Public scheduled workflows may be disabled after 60 days without repository activity. There is no five-minute execution guarantee or alert-delivery SLA.
+The workflow must exist on the default branch for schedules. It uses `*/10 * * * *`, standard `ubuntu-latest`, a ten-minute job timeout, locked dependencies with uv's cache, and no daemon or sleep loop. The runner exits after each check. GitHub concurrency serializes manual/scheduled invocations across refs, with `cancel-in-progress: false`. GitHub can replace older pending runs, delay jobs, or drop runs under load; missed checks are not replayed. Public scheduled workflows may be disabled after 60 days without repository activity. There is no ten-minute execution guarantee or alert-delivery SLA.
 
 ## State and duplicate prevention
 
@@ -115,7 +117,7 @@ Each configuration has a separate hashed watch containing the movie URL/identifi
 - Reads use the last valid backup if the current JSON is corrupt. If both are corrupt/unsupported, the run fails without overwriting either. Missing state starts a new watch; deleting all state necessarily loses duplicate history. The old unversioned upstream JSON cannot prove email delivery and must not be reused as notification history.
 - Local atomic writes and a process lock protect local runs. Cloud writes are fast-forward-only: unexpected competing pushes fail instead of overwriting remote state. Do not run a second workflow or a local writer against the same branch.
 
-Successful checks normally commit once per run to retain their actual timestamp, plus pre-send/post-acceptance checkpoints when alerting. Identical saves make no commits; stopped checks make no state writes. At five-minute intervals, timestamp history can mean about 8,640 small commits per 30 days on the isolated branch. Caches can be evicted and are immutable per key; artifacts expire and need download/permission/retention logic. Neither is used as authoritative state. Only dependency packages are cached.
+Successful checks normally commit once per run to retain their actual timestamp, plus pre-send/post-acceptance checkpoints when alerting. Identical saves make no commits; stopped checks make no state writes. At ten-minute intervals, timestamp history can mean about 8,640 small commits per 30 days on the isolated branch. Caches can be evicted and are immutable per key; artifacts expire and need download/permission/retention logic. Neither is used as authoritative state. Only dependency packages are cached.
 
 To verify persistence and inspect logs:
 
@@ -165,7 +167,7 @@ Local runs use `bms_state.json` and `bms_state.previous.json` in the current dir
 
 - [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions): standard GitHub-hosted runners in public repositories are free. Larger runners are billed, including in public repos; this workflow does not use them.
 - [Current included usage](https://docs.github.com/en/billing/reference/product-usage-included) lists GitHub Free with **$12/month of eligible compute usage**. Private-repository compute consumes the owner's allowance, shared with other work. Do not assume old minute allowances or unlimited private runs.
-- [Runner pricing](https://docs.github.com/en/billing/reference/actions-runner-pricing) lists standard Linux 2-core at **$0.006/minute**, with each job rounded up to a whole minute. 288 requested runs/day is 8,640 in 30 days or 8,928 in 31 days. Even at one billed minute per check, a private repo uses roughly $51.84–$53.57 of compute before allowance (about **$39.84–$41.57 beyond a $12 allowance**, if otherwise unused). Two-minute jobs cost more. Actual runs depend on scheduling; prices can change.
+- [Runner pricing](https://docs.github.com/en/billing/reference/actions-runner-pricing) lists standard Linux 2-core at **$0.006/minute**, with each job rounded up to a whole minute. 144 requested runs/day is 4,320 in 30 days or 4,464 in 31 days. Even at one billed minute per check, a private repo uses roughly $25.92–$26.78 of compute before allowance (about **$13.92–$14.78 beyond a $12 allowance**, if otherwise unused). Two-minute jobs cost more. Actual runs depend on scheduling; prices can change.
 - [Resend pricing](https://resend.com/pricing): free transactional tier currently includes **3,000 emails/month, limited to 100/day**. Checks without a new alert do not call Resend. Keep the account on the free plan; this repository does not enable paid overages or upgrade a plan. Test emails count toward limits.
 - No artifacts are uploaded. Package caching is an optimization, not a requirement for correctness. Review your own Actions/cache storage usage and billing settings; do not opt into paid capacity for this monitor.
 
@@ -182,7 +184,7 @@ See also [GitHub schedule limitations](https://docs.github.com/en/actions/refere
 | `unavailable (date_not_open)` | Target date explicitly disabled in a recognizable response. No availability email. |
 | `unavailable (matching_shows)` | Matching sessions exist, all categories are sold out. |
 | No preferred showtimes | Valid inventory/date, but no sessions match your time filters. Broaden `BMS_TIME` if needed. |
-| Missing/invalid config | Fix Variables; blank booleans use defaults. Unsupported cities, malformed dates/times, absent URL/theatre, and non-5 intervals fail before requests. |
+| Missing/invalid config | Fix Variables; blank booleans use defaults. Unsupported cities, malformed dates/times, absent URL/theatre, and non-10 intervals fail before requests. |
 | Resend HTTP 401/403 | Check API key permissions, verified sender, and resend.dev recipient restriction. No secrets/provider bodies are printed. Pending alert is retained. |
 | Resend accepted but inbox empty | Inspect Resend delivery/bounce logs, recipient and spam folder. Provider acceptance cannot prove inbox delivery. |
 | Resend HTTP 429/5xx, timeout, or missing email ID | Pending payload is retried with its stable key next run. No history is marked delivered without an email ID. |

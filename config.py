@@ -25,8 +25,13 @@ def time_preferences(raw, dates):
             raise ValueError('Each BMS_TIME rule must be a string; use empty string for anytime')
         result = ','.join(p.strip().lower() for p in value.split(',') if p.strip())
         for period in result.split(',') if result else []:
-            if period not in TIME_PERIODS and not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', period):
-                raise ValueError('BMS_TIME requires morning,afternoon,evening,night or HH:MM')
+            clock = r'(?:[01]\d|2[0-3]):[0-5]\d'
+            if re.fullmatch(f'{clock}-{clock}', period):
+                start, end = period.split('-')
+                if start > end:
+                    raise ValueError('BMS_TIME ranges must start before they end')
+            elif period not in TIME_PERIODS and not re.fullmatch(clock, period):
+                raise ValueError('BMS_TIME requires a period, HH:MM or inclusive HH:MM-HH:MM range')
         return result
 
     if not raw.strip().startswith('{'):
@@ -59,6 +64,8 @@ class Config:
     times: str
     notify_once: bool
     stop_after_found: bool
+    screen: str = ''
+    language: str = ''
 
     def time_filter_for(self, date):
         if self.times.startswith('{'):
@@ -89,8 +96,8 @@ class Config:
                 raise ValueError('BMS_DATES must contain YYYYMMDD dates')
             datetime.strptime(d, '%Y%m%d')
         times = time_preferences(env.get('BMS_TIME', ''), dates)
-        if env.get('CHECK_INTERVAL', '').strip() not in ('', '5'):
-            raise ValueError('CHECK_INTERVAL must be 5; edit workflow cron to change scheduling')
+        if env.get('CHECK_INTERVAL', '').strip() not in ('', '10'):
+            raise ValueError('CHECK_INTERVAL must be 10; edit workflow cron to change scheduling')
         # Rewrite a city embedded in the supplied URL to match the explicit/default city.
         parts = u.path.split('/')
         if 'movies' not in parts or parts.index('movies') + 2 >= len(parts):
@@ -105,4 +112,6 @@ class Config:
             parts.insert(0, '')
         url = 'https://in.bookmyshow.com' + '/'.join(parts)
         return cls(url, parsed['event_code'], city, theatre, dates, times,
-                   boolean(env, 'NOTIFY_ONCE', True), boolean(env, 'STOP_AFTER_FOUND', False))
+                   boolean(env, 'NOTIFY_ONCE', True), boolean(env, 'STOP_AFTER_FOUND', False),
+                   env.get('BMS_SCREEN', '').strip().lower(),
+                   env.get('BMS_LANGUAGE', '').strip().lower())

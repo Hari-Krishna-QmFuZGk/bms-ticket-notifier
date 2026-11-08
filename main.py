@@ -272,6 +272,12 @@ def filter_shows(shows, theatre_filter, time_periods, date_codes):
                 tc = -1
             matched = False
             for p in periods:
+                if '-' in p:
+                    start, end = p.split('-', 1)
+                    if int(start.replace(':', '')) <= tc <= int(end.replace(':', '')):
+                        matched = True
+                        break
+                    continue
                 if ":" in p and tc == int(p.replace(":", "")):
                     matched = True
                     break
