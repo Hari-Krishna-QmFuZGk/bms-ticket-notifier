@@ -356,6 +356,15 @@ class CheckTests(unittest.TestCase):
 
 class NetworkTests(unittest.TestCase):
     @patch('main.requests.get')
+    def test_browser_challenge_is_reported_without_body_or_retry(self, get):
+        get.return_value.status_code = 403
+        get.return_value.headers = {'cf-mitigated': 'challenge'}
+        get.return_value.text = 'private response details'
+        with self.assertRaisesRegex(RuntimeError, '^BookMyShow HTTP 403: Cloudflare browser challenge; availability unknown$'):
+            main.fetch_bms('ET00518312', '20261114', *main.REGION_MAP['hyderabad'], language='telugu')
+        get.assert_called_once()
+
+    @patch('main.requests.get')
     def test_blocks_not_retried(self, get):
         get.return_value.status_code = 403
         with self.assertRaisesRegex(RuntimeError, '403'):

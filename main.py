@@ -161,6 +161,12 @@ def fetch_bms(event_code, date_code, region_code, region_slug,
             time.sleep(2 ** attempt)
             continue
         if resp.status_code != 200:
+            if resp.status_code == 403:
+                body = resp.text if isinstance(resp.text, str) else ''
+                if resp.headers.get('cf-mitigated') == 'challenge' or 'cf-chl-' in body:
+                    raise RuntimeError('BookMyShow HTTP 403: Cloudflare browser challenge; availability unknown')
+                if 'access denied' in body.lower() or 'you have been blocked' in body.lower():
+                    raise RuntimeError('BookMyShow HTTP 403: access denied by website; availability unknown')
             raise RuntimeError(f"BookMyShow HTTP {resp.status_code}; availability unknown")
         try:
             data = resp.json()
