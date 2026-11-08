@@ -2,7 +2,7 @@ name: Tests
 on:
   pull_request:
   push:
-    paths: ['**.py', 'pyproject.toml', 'uv.lock', 'Dockerfile', '.dockerignore', '.github/workflows/**']
+    paths: ['**.py', '**.ts', 'pyproject.toml', 'uv.lock', 'Dockerfile', '.dockerignore', '.github/workflows/**']
 permissions:
   contents: read
 jobs:
@@ -24,4 +24,5 @@ jobs:
       - name: Verify container runtime and paused startup
         run: |
           docker run --rm --entrypoint /app/.venv/bin/python bms-checker -c "from zoneinfo import ZoneInfo; import requests; print(ZoneInfo('Asia/Kolkata'))"
+          docker run --rm --entrypoint bun bms-checker --version
           docker run --rm -e BMS_RUN_MODE=check -e MONITOR_ENABLED=false bms-checker

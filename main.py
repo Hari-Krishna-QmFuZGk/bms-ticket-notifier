@@ -14,6 +14,9 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 import requests
+import json
+import subprocess
+from pathlib import Path
 
 AVAIL_STATUS_MAP = {
     "0": ("SOLD OUT",    "🔴"),
@@ -110,6 +113,31 @@ API_URL = (
 )
 
 
+def bms_request(url, headers, params):
+    transport = os.getenv('BMS_HTTP_TRANSPORT', 'requests')
+    if transport == 'requests':
+        return requests.get(url, headers=headers, params=params, timeout=(5, 15))
+    if transport != 'bun':
+        raise RuntimeError('BMS_HTTP_TRANSPORT must be requests or bun')
+    try:
+        result = subprocess.run(
+            ['bun', str(Path(__file__).with_name('bms_fetch.ts'))],
+            input=json.dumps({'url': url, 'headers': headers, 'params': params}),
+            capture_output=True, text=True, timeout=25, check=True)
+        envelope = json.loads(result.stdout)
+        response = requests.Response()
+        response.status_code = int(envelope['status'])
+        response.encoding = 'utf-8'
+        response._content = envelope['body'].encode('utf-8')
+        if envelope.get('challenge'):
+            response.headers['cf-mitigated'] = 'challenge'
+        elif envelope.get('denied'):
+            response._content = b'Access denied'
+        return response
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
+        raise requests.RequestException('Bun HTTP transport failed') from None
+
+
 def fetch_bms(event_code, date_code, region_code, region_slug,
               lat, lon, geohash, language=''):
     headers = {
@@ -151,7 +179,7 @@ def fetch_bms(event_code, date_code, region_code, region_slug,
     import time
     for attempt in range(3):
         try:
-            resp = requests.get(api_url, headers=headers, params=params, timeout=(5, 15))
+            resp = bms_request(api_url, headers, params)
         except requests.RequestException:
             if attempt < 2:
                 time.sleep(2 ** attempt)

@@ -355,6 +355,21 @@ class CheckTests(unittest.TestCase):
 
 
 class NetworkTests(unittest.TestCase):
+    @patch.dict(os.environ, {'BMS_HTTP_TRANSPORT': 'bun'})
+    @patch('main.subprocess.run')
+    def test_bun_transport_success_and_access_denied(self, run):
+        run.return_value.stdout = json.dumps({'status': 200, 'body': json.dumps(response())})
+        data = main.fetch_bms('ET00518312', '20261114', *main.REGION_MAP['hyderabad'], language='telugu')
+        self.assertIn('data', data)
+        request = json.loads(run.call_args.kwargs['input'])
+        self.assertEqual(request['params']['language'], 'Telugu')
+        self.assertEqual(run.call_args.kwargs['timeout'], 25)
+        run.reset_mock()
+        run.return_value.stdout = json.dumps({'status': 403, 'body': '', 'denied': True})
+        with self.assertRaisesRegex(RuntimeError, 'access denied by website'):
+            main.fetch_bms('ET00518312', '20261114', *main.REGION_MAP['hyderabad'], language='telugu')
+        run.assert_called_once()
+
     @patch('main.requests.get')
     def test_browser_challenge_is_reported_without_body_or_retry(self, get):
         get.return_value.status_code = 403
