@@ -58,13 +58,17 @@ def decode_snapshot(data, config, date):
         filtered = filter_shows(matching, config.theatre, config.time_filter_for(date), date)
         if config.screen:
             preferred = []
+            missing_screen = False
             for show in filtered:
                 label = show.screen_attr
                 # Never guess PCX from a screen number or the multiplex name.
                 if not isinstance(label, str) or not label.strip():
-                    raise ValueError('Screen metadata missing; requested screen availability unknown')
+                    missing_screen = True
+                    continue
                 if re.search(r'\b' + re.escape(config.screen) + r'\b', label, re.IGNORECASE):
                     preferred.append(show)
+            if missing_screen and not preferred:
+                raise ValueError('Screen metadata missing; requested screen availability unknown')
             filtered = preferred
         return movie, filtered, 'matching_shows' if filtered else 'no_preferred_showtimes'
     except (KeyError, TypeError, AttributeError, ValueError, IndexError) as exc:
@@ -143,7 +147,8 @@ def run_check(config, store, *, dry_run=False, fetch=fetch_bms, sender=send_emai
     for date in config.dates:
         record = watch['records'].setdefault(date, {'available': {}})
         try:
-            data = fetch(config.event, date, *region)
+            kwargs = {'language': config.language} if config.language else {}
+            data = fetch(config.event, date, *region, **kwargs)
             movie, shows, reason = decode_snapshot(data, config, date)
             available = available_shows(shows)
             record.update({'result': 'available' if available else 'unavailable',

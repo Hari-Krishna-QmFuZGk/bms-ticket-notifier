@@ -111,7 +111,7 @@ API_URL = (
 
 
 def fetch_bms(event_code, date_code, region_code, region_slug,
-              lat, lon, geohash):
+              lat, lon, geohash, language=''):
     headers = {
         "User-Agent": "bms-ticket-notifier/0.2 (+https://github.com/shray-narang/bms-ticket-notifier)",
         "Accept": "application/json",
@@ -134,11 +134,24 @@ def fetch_bms(event_code, date_code, region_code, region_slug,
         "memberId": "", "lsId": "", "subCode": "",
         "lat": lat, "lon": lon,
     }
+    api_url = API_URL
+    if language:
+        # Observed public website request: all formats for one language/movie.
+        api_url = API_URL.replace('/v4/', '/v5/')
+        # v5 takes its region in the query; omit obsolete v4 location headers.
+        headers = {'User-Agent': 'bms-ticket-notifier/0.2', 'Accept': 'application/json',
+                   'x-app-code': 'WEB', 'x-region-code': region_code}
+        params = {
+            'etCodes': '*', 'dateCode': date_code or '', 'isDesktop': 'true',
+            'regionCode': region_code, 'xLocationShared': 'false',
+            'memberId': '', 'lsId': '', 'subCode': '', 'appCode': 'WEB',
+            'language': language.title(), 'refEventCode': event_code,
+        }
     # Retry transient transport/server failures only; never bypass a block.
     import time
     for attempt in range(3):
         try:
-            resp = requests.get(API_URL, headers=headers, params=params, timeout=(5, 15))
+            resp = requests.get(api_url, headers=headers, params=params, timeout=(5, 15))
         except requests.RequestException:
             if attempt < 2:
                 time.sleep(2 ** attempt)
@@ -163,6 +176,7 @@ def fetch_bms(event_code, date_code, region_code, region_slug,
 # ──────────────────────────────────────────────────────────────────────
 def parse_movie_info(data):
     info = {"name": "Unknown Movie", "language": ""}
+    info['name'] = data.get('data', {}).get('header', {}).get('title', {}).get('text') or info['name']
     for w in data.get("data", {}).get("topStickyWidgets", []):
         if w.get("type") == "horizontal-text-list":
             for item in w.get("data", []):
@@ -210,7 +224,10 @@ def parse_shows(data):
                 vname = addl.get("venueName", "Unknown")
                 vcode = addl.get("venueCode", "")
 
-                for st in card.get("showtimes", []):
+                showtimes = list(card.get('showtimes', []))
+                for section in card.get('showtimesSections', []):
+                    showtimes.extend(section.get('showtimes', []))
+                for st in showtimes:
                     sa = st.get("additionalData", {})
                     date_code = str(
                         sa.get("showDateCode", "")
@@ -237,6 +254,18 @@ def parse_shows(data):
                             price=cat.get("curPrice", "0"),
                             status=ca,
                         ))
+                    if not show.categories:
+                        widgets = st.get('customGestureCTA', {}).get('additionalData', {}).get('bottomSheetData', {}).get('widgets', [])
+                        labels = {'SOLD OUT': '0', 'ALMOST FULL': '1', 'FILLING FAST': '2', 'AVAILABLE': '3'}
+                        for widget in widgets:
+                            values = widget.get('variableData', {})
+                            if 'seatAvalibility' in values:
+                                show.categories.append(CatInfo(
+                                    values.get('seatType', 'Seats'),
+                                    str(values.get('seatCost', '')).replace('₹', '').strip(),
+                                    labels.get(values['seatAvalibility'], 'UNKNOWN')))
+                        if not show.categories and 'availStatus' in sa:
+                            show.categories.append(CatInfo('Show availability', '', str(sa['availStatus'])))
                     shows.append(show)
     return shows
 

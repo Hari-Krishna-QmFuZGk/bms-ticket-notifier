@@ -1,0 +1,27 @@
+name: Test Resend email
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/test-email.yml']
+permissions:
+  contents: read
+jobs:
+  email:
+    # The push hook allows the user's one-time test before the draft is merged.
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Send requested Resend test and verify v5 checker'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.14'
+      - run: uv sync --frozen --no-dev
+      - name: Send requested test notification
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_TO_EMAIL: ${{ secrets.RESEND_TO_EMAIL }}
+        run: uv run --no-sync main.py --test-notification

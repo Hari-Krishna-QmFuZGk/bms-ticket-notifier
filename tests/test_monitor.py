@@ -118,6 +118,51 @@ class ParserTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 Config.from_env(dict(ENV, BMS_TIME=value))
 
+    def test_v5_sections_and_seat_widgets(self):
+        data = response()
+        body = data['data']
+        body.pop('bottomSheetData')
+        body['header'] = {'title': {'text': 'Ramayana'}}
+        body['topStickyWidgets'].append({'type': 'horizontal-text-list', 'data': [
+            {'leftText': {'data': [{'components': [{'text': 'Telugu • All'}]}]}}]})
+        card = body['showtimeWidgets'][0]['data'][0]['data'][0]
+        show = card.pop('showtimes')[0]
+        show['screenAttr'] = 'PCX Screen'
+        show['additionalData'].pop('categories')
+        show['additionalData']['availStatus'] = '1'
+        show['customGestureCTA'] = {'additionalData': {'bottomSheetData': {'widgets': [
+            {'variableData': {'seatAvalibility': 'ALMOST FULL', 'seatCost': '₹ 400.00',
+                              'seatType': 'GOLD + 3D GlassL'}}]}}}
+        unlabelled = copy.deepcopy(show)
+        unlabelled.pop('screenAttr')
+        card['showtimesSections'] = [{'showtimes': [unlabelled, show]}]
+        config = Config.from_env(dict(ENV, BMS_LANGUAGE='telugu', BMS_SCREEN='PCX'))
+        movie, shows, _ = decode_snapshot(data, config, '20261120')
+        self.assertEqual(movie['name'], 'Ramayana')
+        self.assertEqual(len(shows), 1)
+        self.assertEqual(shows[0].categories[0].status, '1')
+        self.assertEqual(shows[0].categories[0].price, '400.00')
+        # v5 can silently return today's shows when a future date is disabled.
+        body['topStickyWidgets'][0]['data'].append(
+            {'id': '20261121', 'styleId': 'date-disabled', 'data': ['Sat', '21', 'Nov']})
+        config = Config.from_env(dict(ENV, BMS_LANGUAGE='telugu', BMS_SCREEN='PCX', BMS_DATES='20261121'))
+        _, shows, reason = decode_snapshot(data, config, '20261121')
+        self.assertEqual(shows, [])
+        self.assertEqual(reason, 'date_not_open')
+
+    def test_v5_request_parameters_and_booking_link(self):
+        with patch('main.requests.get') as get:
+            get.return_value.status_code = 200
+            get.return_value.json.return_value = {'data': {}}
+            main.fetch_bms('ET00518312', '20261114', *main.REGION_MAP['hyderabad'], language='telugu')
+            args, kwargs = get.call_args
+            self.assertIn('/v5/', args[0])
+            self.assertEqual(kwargs['params']['etCodes'], '*')
+            self.assertEqual(kwargs['params']['language'], 'Telugu')
+            self.assertNotIn('x-geohash', kwargs['headers'])
+        config = Config.from_env(dict(ENV, BMS_LANGUAGE='telugu'))
+        self.assertIn('etCodes=%2A&language=telugu&refEventCode=', config.url)
+
     def test_parse_and_filter(self):
         movie, shows, _ = decode_snapshot(response(), self.config, '20261120')
         self.assertEqual(movie['name'], 'Test Movie')

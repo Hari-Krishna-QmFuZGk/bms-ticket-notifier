@@ -4,7 +4,7 @@ import re
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 
 from main import REGION_MAP, TIME_PERIODS, parse_bms_url
 
@@ -111,7 +111,10 @@ class Config:
             parts = [part for part in parts if part] + [dates[0]]
             parts.insert(0, '')
         url = 'https://in.bookmyshow.com' + '/'.join(parts)
+        language = env.get('BMS_LANGUAGE', '').strip().lower()
+        if language:
+            url += '?' + urlencode({'etCodes': '*', 'language': language, 'refEventCode': parsed['event_code']})
         return cls(url, parsed['event_code'], city, theatre, dates, times,
                    boolean(env, 'NOTIFY_ONCE', True), boolean(env, 'STOP_AFTER_FOUND', False),
                    env.get('BMS_SCREEN', '').strip().lower(),
-                   env.get('BMS_LANGUAGE', '').strip().lower())
+                   language)
