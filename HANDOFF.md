@@ -1,3 +1,17 @@
+# Setup status — 8 November 2026
+
+Current watch supersedes the earlier November 5–8 plan below: Telugu Ramayana event ET00523814; Prasads Multiplex Hyderabad; PCX screen labels; November 14; show starts 13:00–23:00 IST inclusive; ten-minute schedule. See WATCH_PLAN.md.
+
+Watch Variables are saved on Hari-Krishna-QmFuZGk/bms-ticket-notifier. MONITOR_ENABLED=false. RESEND_FROM_EMAIL is saved as onboarding@resend.dev. RESEND_API_KEY and RESEND_TO_EMAIL are still absent; user is creating a Resend account. No email has been sent.
+
+Branch changes implement explicit screen/language guards and inclusive time ranges. GitHub CI passed all 40 tests at e9ac6b7. The read-only access probe failed with BookMyShow HTTP 403 on the GitHub runner, confirming the same local failure. Availability and live screen/language schema remain unknown. Do not describe this setup as active or working.
+
+- Passing tests: https://github.com/Hari-Krishna-QmFuZGk/bms-ticket-notifier/actions/runs/42440657081
+- Failed read-only API probe: https://github.com/Hari-Krishna-QmFuZGk/bms-ticket-notifier/actions/runs/42440654665
+
+Draft PR remains unmerged. Original D:\Personal\bms-ticket-notifier checkout remains unchanged. Cloud execution requires resolving permitted BookMyShow access and validating live PCX/language metadata, then testing email and integrating the workflow on main before enabling the schedule.
+
+---
 # Implementation and deployment handoff
 
 Implementation prepared on branch **`codex/cloud-monitor`**, based on upstream `5f9782d`. The user created the public fork at `Hari-Krishna-QmFuZGk/bms-ticket-notifier`, which was verified as a fork of the original repository with default branch `main`. The user approved pushing this feature branch and opening a draft PR against the fork. No default-branch push, merge, real email, or monitoring activation is included.
