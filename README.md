@@ -2,7 +2,7 @@
 
 A cloud monitor that runs once per GitHub Actions invocation, checks a movie's showtimes at selected cinemas/dates, sends an availability email through Resend, and exits. It never purchases tickets. The cron requests a run every ten minutes; GitHub can delay or drop scheduled jobs.
 
-**Live compatibility is unverified.** On 2026-11-03, the repository's existing BookMyShow API endpoint returned HTTP 403 from the development environment, including during a dry run of this checker. Mocked tests verify the implementation, not current BookMyShow access or its undocumented API schema. Run a dry check from your GitHub runner before relying on this monitor. A block is reported as unknown availability, never sold out. There is no CAPTCHA bypass, proxy service, browser automation, or paid infrastructure.
+**Current status (8 November 2026): local v5 access works; GitHub-hosted access is denied.** The configured Telugu watch uses the current v5 all-format endpoint and its section/seat-widget schema. A local request returned HTTP 200 and explicitly marked 14 November not open. The GitHub runner returned HTTP 403 with an access-denied page. Resend accepted the requested test notification. All 43 tests pass. Monitoring remains off until an execution environment with working access is selected. The legacy v4 path is retained for configurations without BMS_LANGUAGE and is not live-verified.
 
 ## Prerequisites and fork
 
@@ -193,4 +193,4 @@ See also [GitHub schedule limitations](https://docs.github.com/en/actions/refere
 | Git push/state branch error | Check Actions write permissions, branch rules, network, or another writer. Remote errors do not count as a missing branch. No force pushes are attempted; a failed durable pre-send checkpoint prevents mail. |
 | Schedule never runs | Ensure workflow is on default branch, Actions is enabled, and `MONITOR_ENABLED` is exactly `true`. GitHub may delay/drop scheduled events or disable inactive schedules. |
 
-No real email was sent during development because Resend credentials were not supplied. User-specific cinema/date/time preferences and the unresolved Hindi/Telugu movie link are recorded in WATCH_PLAN.md. See [AUDIT.md](AUDIT.md) for the initial repository findings and [HANDOFF.md](HANDOFF.md) for validation and deployment status.
+Resend accepted one user-requested test email on 8 November 2026; inbox receipt is not independently verified. The corrected Telugu all-format reference and current PCX watch are recorded in WATCH_PLAN.md. See [AUDIT.md](AUDIT.md) for the initial repository findings and [HANDOFF.md](HANDOFF.md) for validation and deployment status.

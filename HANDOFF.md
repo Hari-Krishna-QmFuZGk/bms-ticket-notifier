@@ -1,3 +1,16 @@
+# Latest verification — 8 November 2026
+
+This section supersedes the earlier snapshots below.
+
+- Fixed the configured watch to use the live website's v5 all-format API, removing obsolete v4 location headers. Normal local requests now succeed with HTTP 200.
+- Corrected the user's 4DX-only ET00523814 to the observed Telugu all-format reference ET00518312. PCX sessions appear in the Telugu 3D section; no guessed event IDs are used.
+- Added parsing for showtimesSections, header movie names, seat-category widgets and show-level availability. Unlabelled non-PCX sessions no longer suppress explicitly labelled PCX results. A disabled requested date cannot trigger an alert from the API's fallback date.
+- GitHub CI: 43 passing tests at b34fcbf. Local live response explicitly marks November 14 not open as of this check.
+- Resend accepted the single requested test email in run 42441173951. All secret names are present; no secret values were read or logged. Inbox delivery is not independently verified.
+- GitHub-hosted v5 probe still fails: HTTP 403, access denied by website (run 42441298638). This is not resolved for GitHub-hosted execution. MONITOR_ENABLED remains false; draft PR is unmerged.
+- Asked user whether to run the monitor on their Windows computer instead; no change of deployment environment has been made.
+
+---
 # Setup status — 8 November 2026
 
 Current watch supersedes the earlier November 5–8 plan below: Telugu Ramayana event ET00523814; Prasads Multiplex Hyderabad; PCX screen labels; November 14; show starts 13:00–23:00 IST inclusive; ten-minute schedule. See WATCH_PLAN.md.
