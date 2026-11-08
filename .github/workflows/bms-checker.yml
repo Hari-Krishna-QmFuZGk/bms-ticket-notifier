@@ -2,43 +2,62 @@ name: BMS Ticket Checker
 
 on:
   schedule:
-    # Every 10 minutes
     - cron: '*/10 * * * *'
-  workflow_dispatch:  # Manual trigger button
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run reads state; check persists state and can email; test-notification only emails'
+        type: choice
+        options: [dry-run, check, test-notification]
+        default: dry-run
+
+permissions: {}
+
+# All manual/scheduled checks share one writer, including runs from other refs.
+concurrency:
+  group: bms-monitor-state
+  cancel-in-progress: false
 
 jobs:
   check-tickets:
+    # Scheduled polling requires explicit opt-in. Manual runs remain available.
+    if: github.event_name == 'workflow_dispatch' || vars.MONITOR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: write
-
+      contents: write # Only permission needed: checkpoint to the bms-state branch.
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v6
-
-      - name: Set up uv
+        # checkout's scoped GITHUB_TOKEN is reused by Git worktrees for state pushes.
+      - name: Set up uv and Python
         uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.14'
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run checker
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked runtime dependencies
+        run: uv sync --frozen --no-dev
+      - name: Run one check and exit
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_TO_EMAIL: ${{ secrets.RESEND_TO_EMAIL }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
           BMS_URL: ${{ vars.BMS_URL }}
+          BMS_CITY: ${{ vars.BMS_CITY }}
           BMS_DATES: ${{ vars.BMS_DATES }}
           BMS_THEATRE: ${{ vars.BMS_THEATRE }}
           BMS_TIME: ${{ vars.BMS_TIME }}
-        run: uv run main.py
-
-      - name: Commit updated state
+          BMS_SCREEN: ${{ vars.BMS_SCREEN }}
+          BMS_LANGUAGE: ${{ vars.BMS_LANGUAGE }}
+          CHECK_INTERVAL: ${{ vars.CHECK_INTERVAL }}
+          NOTIFY_ONCE: ${{ vars.NOTIFY_ONCE }}
+          STOP_AFTER_FOUND: ${{ vars.STOP_AFTER_FOUND }}
+          MODE: ${{ inputs.mode || 'check' }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bms_state.json
-          git diff --cached --quiet || (git commit -m "chore: update bms_state.json [skip ci]" && git push)
+          case "$MODE" in
+            dry-run) uv run --no-sync main.py --git-state --dry-run ;;
+            check) uv run --no-sync main.py --git-state ;;
+            test-notification) uv run --no-sync main.py --test-notification ;;
+            *) echo 'Unknown execution mode'; exit 1 ;;
+          esac

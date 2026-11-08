@@ -1,0 +1,30 @@
+name: BookMyShow read-only access probe
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/bms-access-probe.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.14'
+      - run: uv sync --frozen --no-dev
+      - name: Check v5 watch and identify any website access challenge
+        env:
+          BMS_URL: ${{ vars.BMS_URL }}
+          BMS_CITY: ${{ vars.BMS_CITY }}
+          BMS_THEATRE: ${{ vars.BMS_THEATRE }}
+          BMS_SCREEN: ${{ vars.BMS_SCREEN }}
+          BMS_LANGUAGE: ${{ vars.BMS_LANGUAGE }}
+          BMS_DATES: ${{ vars.BMS_DATES }}
+          BMS_TIME: ${{ vars.BMS_TIME }}
+          CHECK_INTERVAL: ${{ vars.CHECK_INTERVAL }}
+        run: uv run --no-sync main.py --dry-run

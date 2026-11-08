@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 .env
+.monitor-state/
+.bms-monitor.lock
+bms_state.previous.json

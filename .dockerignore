@@ -1,0 +1,11 @@
+*
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!README.md
+!main.py
+!config.py
+!monitor.py
+!state.py
+!railway_entry.py
+!bms_fetch.ts
