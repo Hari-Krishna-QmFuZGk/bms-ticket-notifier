@@ -2,7 +2,7 @@ name: Tests
 on:
   pull_request:
   push:
-    paths: ['**.py', 'pyproject.toml', 'uv.lock', '.github/workflows/**']
+    paths: ['**.py', 'pyproject.toml', 'uv.lock', 'Dockerfile', '.dockerignore', '.github/workflows/**']
 permissions:
   contents: read
 jobs:
@@ -19,3 +19,9 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen --no-dev
       - run: uv run --no-sync python -m unittest discover -v
+      - name: Build Railway container
+        run: docker build -t bms-checker .
+      - name: Verify container runtime and paused startup
+        run: |
+          docker run --rm --entrypoint /app/.venv/bin/python bms-checker -c "from zoneinfo import ZoneInfo; import requests; print(ZoneInfo('Asia/Kolkata'))"
+          docker run --rm -e BMS_RUN_MODE=check -e MONITOR_ENABLED=false bms-checker

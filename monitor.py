@@ -203,7 +203,7 @@ def cli(argv=None):
             return 0
         config = Config.from_env()
         # Workflow concurrency serializes cloud runs; flock protects local invocations.
-        lock = Path('.bms-monitor.lock')
+        lock = Path(args.state_file).parent / '.bms-monitor.lock'
         with lock.open('a') as f:
             try:
                 fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
